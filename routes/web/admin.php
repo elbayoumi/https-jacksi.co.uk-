@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Admin\SellerController;
 
 /*
@@ -24,10 +24,10 @@ Route::prefix('admin')->as('admin.')->group(function () {
      * Guest-only routes (accessible only when admin is not logged in)
      */
     Route::middleware('guest:admin')->group(function () {
-        Route::get('login', [AdminAuthController::class, 'showLogin'])
+        Route::get('login', [AuthController::class, 'showLogin'])
             ->name('login');
 
-        Route::post('login', [AdminAuthController::class, 'login'])
+        Route::post('login', [AuthController::class, 'login'])
             ->name('login.post');
     });
 
@@ -45,7 +45,7 @@ Route::prefix('admin')->as('admin.')->group(function () {
             ->only(['index', 'update']);
 
         // Logout
-        Route::post('logout', [AdminAuthController::class, 'logout'])
+        Route::post('logout', [AuthController::class, 'logout'])
             ->name('logout');
     });
 });

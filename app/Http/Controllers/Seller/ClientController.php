@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Contracts\ClientRepositoryInterface;
+use App\Http\Requests\Seller\ClientIndexRequest;
 
 /**
  * Class ClientController
@@ -54,41 +55,54 @@ class ClientController extends Controller
         return $seller;
     }
 
-    /**
-     * List the seller's clients (paginated).
+/**
+     * Display a paginated, searchable list of clients for the current seller.
      *
-     * Supports HTML (Blade) and JSON responses based on the request Accept header.
+     * @param ClientIndexRequest $request  Validated query parameters
+     * @return View|JsonResponse
      */
-    public function index(Request $request): View|JsonResponse
+    public function index(ClientIndexRequest $request): View|JsonResponse
     {
         $seller = $this->seller();
 
-        $q = Client::query()
+        // Extract safe, sanitized inputs from the request
+        $search  = $request->search();           // already escaped for LIKE
+        $sort    = $request->sort();             // whitelisted: name,email,created_at
+        $order   = $request->order();            // asc|desc
+        $perPage = $request->perPage();          // 10|15|25|50
+
+        $query = Client::query()
             ->where('seller_id', $seller->id)
-            ->when($request->string('search')->toString(), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+            ->when($search, function ($q) use ($search) {
+                // Use ESCAPE for literal %/_ chars. Laravel doesn't expose ESCAPE directly,
+                // but escaping the term is typically sufficient. If your driver supports it,
+                // you can also use whereRaw with an ESCAPE clause.
+                $like = "%{$search}%";
+                $q->where(function ($sub) use ($like) {
+                    $sub->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('phone', 'like', $like);
                 });
             })
-            ->orderBy('name')
-            ->paginate(15)
+            ->orderBy($sort, $order);
+
+        $clients = $query
+            ->paginate($perPage)
             ->withQueryString();
 
         if ($request->wantsJson()) {
             return response()->json([
-                'data' => $q->items(),
+                'data' => $clients->items(),
                 'meta' => [
-                    'current_page' => $q->currentPage(),
-                    'last_page'    => $q->lastPage(),
-                    'per_page'     => $q->perPage(),
-                    'total'        => $q->total(),
+                    'current_page' => $clients->currentPage(),
+                    'last_page'    => $clients->lastPage(),
+                    'per_page'     => $clients->perPage(),
+                    'total'        => $clients->total(),
                 ],
             ]);
         }
 
-        return view('seller.clients.index', ['clients' => $q]);
+        return view('seller.clients.index', ['clients' => $clients]);
     }
 
     /**
