@@ -15,3 +15,6 @@ Route::resource('clients', Seller\ClientController::class);
 Route::resource('invoices', Seller\InvoiceController::class);
 Route::get('invoices/{invoice}/pdf', [Seller\InvoicePdfController::class,'show'])->name('invoices.pdf');
 });
+Route::prefix('seller')->name('seller.')->middleware('auth:seller')->group(function () {
+    Route::resource('invoices', \App\Http\Controllers\Seller\InvoiceController::class);
+});
