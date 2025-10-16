@@ -15,22 +15,28 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="font-sans text-gray-900 antialiased bg-gradient-to-br from-gray-100 to-white">
+<body class="bg-gradient-to-br from-[#f5f7fa] to-[#e2e8f0] font-sans text-gray-900 antialiased">
 
-    <!-- Page Wrapper for Seller Auth Pages -->
-    <div class="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Page Container -->
+    <div class="min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative">
 
-        <!-- Seller Logo -->
-        <div class="mb-6">
+        <!-- Decorative Circle Top Left -->
+        <div class="absolute top-0 left-0 w-48 h-48 bg-[#FFA500]/20 rounded-full blur-2xl opacity-30 -z-10"></div>
+        <!-- Decorative Circle Bottom Right -->
+        <div class="absolute bottom-0 right-0 w-64 h-64 bg-[#1F3B73]/10 rounded-full blur-3xl opacity-25 -z-10"></div>
+
+        <!-- Logo -->
+        <div class="mb-8">
             <a href="/" title="Back to Home">
-                <x-application-logo class="w-20 h-20 fill-current text-indigo-600" />
+                <x-application-logo class="w-20 h-20 text-[#1F3B73]" />
             </a>
+            <h1 class="mt-2 text-xl font-semibold text-[#1F3B73] tracking-tight">Welcome to Seller Portal</h1>
         </div>
 
-        <!-- Auth Card -->
-        <div class="w-full max-w-md bg-white border border-gray-100 shadow-xl rounded-xl px-8 py-6">
+        <!-- Card -->
+        <div class="w-full max-w-md bg-white border border-gray-200 shadow-3xl rounded-2xl px-10 py-8 transition-all duration-300">
 
-            <!-- Dynamic content will be injected here -->
+            <!-- Slot Content -->
             {{ $slot }}
 
         </div>

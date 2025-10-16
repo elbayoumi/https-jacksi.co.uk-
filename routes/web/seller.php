@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SellerAuthController;
+use App\Http\Controllers\Seller\Auth\AuthController;
+
 use App\Http\Controllers\Seller\DashboardController;
 use App\Http\Controllers\Seller\ClientController;
 use App\Http\Controllers\Seller\InvoiceController;
@@ -28,8 +29,8 @@ Route::prefix('seller')->as('seller.')->group(function () {
      */
     Route::middleware(['web', 'guest:seller'])->group(function () {
         // Login form + submission
-        Route::get('login', [SellerAuthController::class, 'showLogin'])->name('login');
-        Route::post('login', [SellerAuthController::class, 'login'])->name('login');
+        Route::get('login', [AuthController::class, 'showLogin'])->name('login');
+        Route::post('login', [AuthController::class, 'login'])->name('login');
     });
 
     /**
@@ -51,7 +52,7 @@ Route::prefix('seller')->as('seller.')->group(function () {
             ->name('invoices.pdf');
 
         // Logout
-        Route::post('logout', [SellerAuthController::class, 'logout'])->name('logout');
+        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     });
 
     /**

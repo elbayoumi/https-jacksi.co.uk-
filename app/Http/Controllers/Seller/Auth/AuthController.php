@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Seller\Auth;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class SellerAuthController extends Controller
+class AuthController extends Controller
 {
     public function showLogin()
     {
-        return view('auth.seller-login');
+        return view('auth.seller.login');
     }
     public function login(Request $r)
     {
