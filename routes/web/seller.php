@@ -29,7 +29,7 @@ Route::prefix('seller')->as('seller.')->group(function () {
     Route::middleware(['web', 'guest:seller'])->group(function () {
         // Login form + submission
         Route::get('login', [SellerAuthController::class, 'showLogin'])->name('login');
-        Route::post('login', [SellerAuthController::class, 'login'])->name('login.post');
+        Route::post('login', [SellerAuthController::class, 'login'])->name('login');
     });
 
     /**
