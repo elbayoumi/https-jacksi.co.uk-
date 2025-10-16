@@ -15,11 +15,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Order matters: create roles/owners first, then business data
+        $this->call([
+            AdminSeeder::class,
+            SellerSeeder::class,
+            DemoDataSeeder::class,
         ]);
+
+        $this->command->info('Seeding finished. Credentials:');
+        $this->command->warn('Admin: admin@example.com / password');
+        $this->command->warn('Sellers: check "sellers" table — all use password "password".');
     }
 }
