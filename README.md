@@ -1,386 +1,308 @@
-# Hiring Task — Laravel Admin/Seller Dashboard (Laravel 11+) — **Full Multi‑Guard (Admin & Seller as Separate Models)**
+# 🧾 Multi-Guard Invoicing Dashboard (Laravel 11+)
 
-> Completely rewritten per your notes: **latest Laravel‑ready**, and **Seller has its own guard & provider** separate from users. Clean layering (FormRequests, Services/Repositories), Events, DomPDF, REST API, Sanctum options, Seeders/Factories, and a green Unit Test.
+A **robust business dashboard** built with Laravel 11+ supporting **multi-guard authentication** for Admins and Sellers. Features RESTful APIs, PDF exports, service-layered architecture, and role-based access control. Ideal as a starter template for a full-scale SaaS invoicing platform.
+
+---
+
+## 📚 Table of Contents
+
+- [Overview](#-overview)
+- [Tech Stack](#️-tech-stack)
+- [Architecture](#️-architecture)
+- [Authentication Guards](#-authentication-guards)
+- [Database Schema](#-database-schema)
+- [Functional Features](#-functional-features)
+- [Events & Notifications](#-events--notifications)
+- [Business Logic Layer](#-business-logic-layer)
+- [Routes Organization](#-routes-organization)
+- [REST API Endpoints](#-rest-api-endpoints)
+- [Testing](#-testing)
+- [Seeders & Dummy Data](#-seeders--dummy-data)
+- [PDF Export](#-pdf-export)
+- [Quality Standards](#-quality-standards)
+- [Quick Setup Guide](#-quick-setup-guide)
+- [API Tokens](#-api-tokens)
+- [Developer Notes](#-developer-notes)
+- [Credits](#-credits)
+
+---
+
+## 📋 Overview
+
+A Laravel-based invoicing system with two distinct user roles:
+
+- **Admin**: Manages all sellers, clients, and invoices.
+- **Seller**: Manages their own clients and invoices independently.
+
+Built with scalability and maintainability in mind, the project includes:
+
+- 🧩 RESTful API
+- 🖥️ Blade-based dashboard
+- 🧠 Service & Repository pattern
+- 🔒 Multi-guard session & token auth
+- 📤 DomPDF invoice export
+- 📬 Notifications, Events, Listeners
+- ✅ PHPUnit / Pest testing
 
 ---
 
 ## ⚙️ Tech Stack
 
-* **Laravel 11+** (works on latest)
-* **PHP 8.2+**, **MySQL 8**
-* **Auth (Web)**: Two session guards → `seller`, `admin`
-* **Auth (API, optional)**: Sanctum abilities (`seller` / `admin`)
-* **PDF**: `barryvdh/laravel-dompdf`
-* **UI**: Blade minimal dashboards (admin & seller)
-* **Architecture**: FormRequests + Services/Repositories + Events/Listeners + Tests
+| Component       | Tool / Version               |
+|----------------|------------------------------|
+| Framework       | Laravel 11.x                 |
+| Language        | PHP 8.2+                     |
+| Database        | MySQL 8+                     |
+| Auth            | Multi-guard (Admin & Seller) |
+| API Auth (Opt.) | Laravel Sanctum              |
+| PDF Export      | barryvdh/laravel-dompdf      |
+| UI              | Blade + Bootstrap            |
+| Testing         | PHPUnit / Pest               |
+| Seeding         | Factories + Faker            |
 
 ---
 
-## 🧩 Auth: Guards & Providers (`config/auth.php`)
+## 🏗️ Architecture
 
-```php
-return [
-    'defaults' => [
-        'guard' => env('AUTH_GUARD', 'seller'),
-        'passwords' => env('AUTH_PASSWORD_BROKER', 'sellers'),
-    ],
+app/
+├── Contracts/
+├── Services/
+├── Events/
+├── Listeners/
+├── Notifications/
+├── Http/
+│ ├── Controllers/
+│ │ ├── Admin/
+│ │ ├── Seller/
+│ │ └── API/
+│ ├── Requests/
+│ └── Middleware/
+├── Models/
+├── Providers/
+resources/
+├── views/admin/
+└── views/seller/
+routes/
+├── web/
+│ ├── admin.php
+│ ├── seller.php
+│ └── shared.php
+└── api.php
 
-    'guards' => [
-        'seller' => [ // Seller guard (session)
-            'driver' => 'session',
-            'provider' => 'sellers',
-        ],
-        'admin' => [ // Admin guard (session)
-            'driver' => 'session',
-            'provider' => 'admins',
-        ],
-        // For Sanctum API: set sanctum.php => 'guard' => ['seller','admin'] if needed
-    ],
-
-    'providers' => [
-        'sellers' => [
-            'driver' => 'eloquent',
-            'model'  => App\Models\Seller::class,
-        ],
-        'admins' => [
-            'driver' => 'eloquent',
-            'model'  => App\Models\Admin::class,
-        ],
-    ],
-
-    'passwords' => [
-        'sellers' => [
-            'provider' => 'sellers',
-            'table'    => 'password_reset_tokens',
-            'expire'   => 60,
-        ],
-        'admins' => [
-            'provider' => 'admins',
-            'table'    => 'password_reset_tokens',
-            'expire'   => 60,
-        ],
-    ],
-
-    'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
-];
-```
-
-> **Why this design?** Full isolation (tables/models/guards) → cleaner policies, clearer middleware, and zero role‑mixing.
+pgsql
+Copy code
 
 ---
 
-## 🧱 Models & Migrations
+## 🔐 Authentication Guards
 
-### `App/Models/Admin.php`
+| Guard    | Provider | Model                  | Role               | Type           |
+|----------|----------|------------------------|--------------------|----------------|
+| `admin`  | `admins` | `App\Models\Admin`     | System Admin       | Session / API  |
+| `seller` | `sellers`| `App\Models\Seller`    | Business Owner     | Session / API  |
+
+### Configuration (`config/auth.php`):
 
 ```php
-namespace App\Models;
+'guards' => [
+    'admin' => ['driver' => 'session', 'provider' => 'admins'],
+    'seller' => ['driver' => 'session', 'provider' => 'sellers'],
+],
+'providers' => [
+    'admins' => ['driver' => 'eloquent', 'model' => App\Models\Admin::class],
+    'sellers' => ['driver' => 'eloquent', 'model' => App\Models\Seller::class],
+],
+🗃️ Database Schema
+Entity Relationship:
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+scss
+Copy code
+Admin (1) ── (∞) Seller ── (∞) Client ── (∞) Invoice ── (∞) InvoiceItem
+Table	Key Fields	Relationships
+admins	id, name, email, is_active	Oversees sellers
+sellers	id, name, email, password	Has many clients & invoices
+clients	id, seller_id, name, email, address	Belongs to seller
+invoices	id, seller_id, client_id, total, number	Belongs to seller & client
+invoice_items	id, invoice_id, name, qty, price	Belongs to invoice
 
-class Admin extends Authenticatable
+🧩 Functional Features
+👩‍💼 Seller Role
+Register/login via Laravel Breeze
+
+CRUD operations for clients
+
+Create multi-line item invoices
+
+Automatic total calculation
+
+Export invoices to PDF
+
+Dashboard with total revenue & sales
+
+🧑‍💻 Admin Role
+View/manage all sellers, clients, and invoices
+
+Enable/disable sellers
+
+System-wide stats: revenue, invoices, top sellers
+
+Receive notifications on new invoices
+
+🔄 Events & Notifications
+Event	Trigger	Listener/Notification
+InvoiceCreated	After creation	Logs invoice + triggers notification
+NewInvoiceNotification	Listener	Sends mail & DB notification to admins
+
+🧠 Business Logic Layer
+All domain rules are encapsulated in InvoiceService:
+
+Transactional operations
+
+Auto-calculate totals
+
+Auto-generate invoice numbers
+
+Fires InvoiceCreated on success
+
+Interface Binding
+php
+Copy code
+use App\Contracts\InvoiceServiceInterface;
+use App\Services\InvoiceService;
+
+public function register(): void
 {
-    use HasFactory, Notifiable, HasApiTokens;
-
-    protected $table = 'admins';
-
-    protected $fillable = ['name','email','password','is_active'];
-    protected $hidden = ['password','remember_token'];
-
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-        ];
-    }
+    $this->app->bind(InvoiceServiceInterface::class, InvoiceService::class);
 }
-```
+🌐 Routes Organization
+File	Purpose
+web/admin.php	Admin dashboard, auth, seller mgmt
+web/seller.php	Seller dashboard, clients, invoices
+web/shared.php	Common landing / auth redirects
+api.php	Token-authenticated REST endpoints
 
-### `App/Models/Seller.php`
+php
+Copy code
+Route::prefix('admin')->middleware('web')->group(base_path('routes/web/admin.php'));
+Route::prefix('seller')->middleware('web')->group(base_path('routes/web/seller.php'));
+📤 REST API Endpoints
+Method	Endpoint	Role	Description
+GET	/api/invoices	Seller/Admin	List all invoices
+GET	/api/invoices/{id}	Seller/Admin	View invoice detail
+POST	/api/invoices	Seller	Create new invoice
+PUT	/api/invoices/{id}	Seller	Update existing invoice
+DELETE	/api/invoices/{id}	Seller	Delete invoice
+GET	/api/admin/stats	Admin	View system stats
 
-```php
-namespace App\Models;
+🧪 Testing
+Example
+php
+Copy code
+Sanctum::actingAs($seller, ['seller']);
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+$this->postJson('/api/invoices', [
+  'client_id' => $client->id,
+  'items' => [
+    ['product_name' => 'Service A', 'quantity' => 2, 'price' => 50],
+    ['product_name' => 'Service B', 'quantity' => 1, 'price' => 30],
+  ]
+])->assertCreated()
+  ->assertJsonPath('data.total', 130);
+Run Tests
+bash
+Copy code
+php artisan test
+🧩 Seeders & Dummy Data
+Seeders automatically generate:
 
-class Seller extends Authenticatable
-{
-    use HasFactory, Notifiable, HasApiTokens;
+1 Admin (admin@example.com)
 
-    protected $table = 'sellers';
+3 Sellers, each with:
 
-    protected $fillable = ['name','email','password','is_active'];
-    protected $hidden = ['password','remember_token'];
+5 Clients
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-        ];
-    }
+3 Invoices per client
 
-    // Relations
-    public function clients() { return $this->hasMany(Client::class, 'seller_id'); }
-    public function invoices() { return $this->hasMany(Invoice::class, 'seller_id'); }
-}
-```
+2 Items per invoice
 
-### Migrations
+Run Seeder
+bash
+Copy code
+php artisan migrate:fresh --seed
+🧾 PDF Export
+Export invoices via DomPDF:
 
-```php
-// create_admins_table
-Schema::create('admins', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('email')->unique();
-    $table->timestamp('email_verified_at')->nullable();
-    $table->string('password');
-    $table->boolean('is_active')->default(true);
-    $table->rememberToken();
-    $table->timestamps();
-});
+Template: /resources/views/pdf/invoice.blade.php
 
-// create_sellers_table
-Schema::create('sellers', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('email')->unique();
-    $table->timestamp('email_verified_at')->nullable();
-    $table->string('password');
-    $table->boolean('is_active')->default(true);
-    $table->rememberToken();
-    $table->timestamps();
-});
+Controller Usage:
 
-// clients (FK → sellers)
-Schema::create('clients', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('seller_id')->constrained('sellers')->cascadeOnDelete();
-    $table->string('name');
-    $table->string('email')->nullable();
-    $table->string('phone')->nullable();
-    $table->string('address')->nullable();
-    $table->timestamps();
-});
+php
+Copy code
+$pdf = PDF::loadView('pdf.invoice', ['invoice' => $invoice->load('items', 'client', 'seller')]);
+return $pdf->download($invoice->number . '.pdf');
+🧱 Quality Standards
+✅ SOLID Principles
+✅ Service/Repository abstraction
+✅ Role-based access (guards)
+✅ FormRequest validation
+✅ Modular route files
+✅ Event-driven logging & notifications
+✅ Factories + seeders for demo data
+✅ Controllers < 100 lines
 
-// invoices (FK → sellers, clients)
-Schema::create('invoices', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('seller_id')->constrained('sellers')->cascadeOnDelete();
-    $table->foreignId('client_id')->constrained('clients')->cascadeOnDelete();
-    $table->string('number')->unique();
-    $table->decimal('subtotal', 12, 2)->default(0);
-    $table->decimal('tax', 12, 2)->default(0);
-    $table->decimal('total', 12, 2)->default(0);
-    $table->timestamps();
-});
+🚀 Quick Setup Guide
+bash
+Copy code
+# 1️⃣ Clone the repo
+git clone https://github.com/<your-username>/<repo-name>.git
+cd <repo-name>
 
-// invoice_items
-Schema::create('invoice_items', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('invoice_id')->constrained('invoices')->cascadeOnDelete();
-    $table->string('product_name');
-    $table->unsignedInteger('quantity');
-    $table->decimal('price', 12, 2);
-    $table->decimal('total', 12, 2); // denormalized
-    $table->timestamps();
-});
-```
+# 2️⃣ Install dependencies
+composer install
+npm install && npm run build
 
----
+# 3️⃣ Configure environment
+cp .env.example .env
+php artisan key:generate
 
-## 🔐 Auth Controllers
+# 4️⃣ Migrate & seed
+php artisan migrate:fresh --seed
 
-```php
-class AdminAuthController extends Controller
-{
-    public function showLogin() { return view('auth.admin-login'); }
-    public function login(Request $r) {
-        $cred = $r->validate(['email'=>'required|email','password'=>'required']);
-        if (Auth::guard('admin')->attempt($cred, $r->boolean('remember'))) {
-            $admin = Auth::guard('admin')->user();
-            if (!$admin->is_active) { Auth::guard('admin')->logout(); return back()->withErrors(['email'=>'Account disabled']); }
-            $r->session()->regenerate();
-            return redirect()->intended('/admin/dashboard');
-        }
-        return back()->withErrors(['email'=>'Invalid credentials']);
-    }
-    public function logout(Request $r) { Auth::guard('admin')->logout(); $r->session()->invalidate(); $r->session()->regenerateToken(); return redirect()->route('admin.login'); }
-}
-```
+# 5️⃣ Start the server
+php artisan serve
+Default Credentials
+Role	Email	Password
+Admin	admin@example.com	password
+Seller	seller1@example.com	password
 
-```php
-class SellerAuthController extends Controller
-{
-    public function showLogin() { return view('auth.seller-login'); }
-    public function login(Request $r) {
-        $cred = $r->validate(['email'=>'required|email','password'=>'required']);
-        if (Auth::guard('seller')->attempt($cred, $r->boolean('remember'))) {
-            $seller = Auth::guard('seller')->user();
-            if (!$seller->is_active) { Auth::guard('seller')->logout(); return back()->withErrors(['email'=>'Account disabled']); }
-            $r->session()->regenerate();
-            return redirect()->intended('/seller/dashboard');
-        }
-        return back()->withErrors(['email'=>'Invalid credentials']);
-    }
-    public function logout(Request $r) { Auth::guard('seller')->logout(); $r->session()->invalidate(); $r->session()->regenerateToken(); return redirect()->route('seller.login'); }
-}
-```
+🧭 API Tokens (Optional Sanctum Setup)
+php
+Copy code
+// Admin
+$adminToken = $admin->createToken('admin-token', ['admin'])->plainTextToken;
 
----
-
-## 🌐 Routes (Web)
-
-```php
-Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware('guest:admin')->group(function () {
-        Route::get('login', [AdminAuthController::class,'showLogin'])->name('login');
-        Route::post('login', [AdminAuthController::class,'login'])->name('login.post');
-    });
-    Route::middleware('auth:admin')->group(function () {
-        Route::get('dashboard', fn() => view('admin.dashboard'))->name('dashboard');
-        Route::resource('sellers', Admin\SellerController::class)->only(['index','update']);
-        Route::post('logout', [AdminAuthController::class,'logout'])->name('logout');
-    });
-});
-
-Route::prefix('seller')->name('seller.').group(function () {
-    Route::middleware('guest:seller')->group(function () {
-        Route::get('login', [SellerAuthController::class,'showLogin'])->name('login');
-        Route::post('login', [SellerAuthController::class,'login'])->name('login.post');
-    });
-    Route::middleware('auth:seller')->group(function () {
-        Route::get('dashboard', fn() => view('seller.dashboard'))->name('dashboard');
-        Route::resource('clients', Seller\ClientController::class);
-        Route::resource('invoices', Seller\InvoiceController::class);
-        Route::get('invoices/{invoice}/pdf', [Seller\InvoicePdfController::class,'show'])->name('invoices.pdf');
-    });
-});
-```
-
----
-
-## 🧠 Business Layer
-
-* **Repositories:** `ClientRepository`, `InvoiceRepository`
-* **Services:** `InvoiceService` (totals + auth per guard)
-* **Event:** `InvoiceCreated` → **Listener:** `LogInvoiceCreated` (and optional Notification to Admins)
-
-```php
-$user = Auth::guard('admin')->user() ?? Auth::guard('seller')->user();
-$isAdmin = Auth::guard('admin')->check();
-$isSeller = Auth::guard('seller')->check();
-```
-
----
-
-## 🧾 PDF Export
-
-```php
-$pdf = PDF::loadView('pdf.invoice', ['invoice' => $invoice->load('items','client','seller')]);
-return $pdf->download($invoice->number.'.pdf');
-```
-
-> Guard check: seller can only download own invoices.
-
----
-
-## 🔐 API (Optional with Sanctum)
-
-* Add `HasApiTokens` to both models.
-* `config/sanctum.php`: set `guard => ['seller','admin']`
-* Create tokens & abilities:
-
-```php
-$adminToken  = $admin->createToken('admin-token',  ['admin'])->plainTextToken;
+// Seller
 $sellerToken = $seller->createToken('seller-token', ['seller'])->plainTextToken;
-```
+Use in Headers:
 
-* Routes:
+http
+Copy code
+Authorization: Bearer <token>
+Accept: application/json
+🧰 Developer Notes
+All route files auto-loaded from /routes/web
 
-```php
-Route::middleware('auth:sanctum')->group(function () {
-    Route::middleware('abilities:seller,admin')->group(function () {
-        Route::get('invoices', [InvoiceController::class,'index']);
-        Route::post('clients', [ClientController::class,'store']);
-        Route::post('invoices', [InvoiceController::class,'store']);
-    });
-    Route::middleware('abilities:admin')->group(function () {
-        Route::get('admin/stats', [StatsApiController::class,'index']);
-        Route::patch('admin/sellers/{seller}/toggle', [Admin\SellerController::class,'update']);
-    });
-});
-```
+Use middleware: auth:admin or auth:seller
 
----
+Prefer service injection over direct model calls
 
-## 🧪 Tests
+Extend to multi-tenancy via tenant_id pattern
 
-```php
-it('seller can create invoice with items & totals', function () {
-    $seller = Seller::factory()->create();
-    $client = Client::factory()->create(['seller_id' => $seller->id]);
+Blade components easily swappable with Vue or Livewire
 
-    $payload = [
-        'client_id' => $client->id,
-        'items' => [
-            ['product_name' => 'P1', 'quantity' => 2, 'price' => 50],
-            ['product_name' => 'P2', 'quantity' => 1, 'price' => 30],
-        ],
-        'tax' => 18,
-    ];
+🏁 Credits
+Crafted with ❤️ by Mohamed Ashraf
+CTO / Full-Stack Laravel Developer
 
-    $this->actingAs($seller, 'seller')
-         ->postJson('/api/invoices', $payload)
-         ->assertCreated()
-         ->assertJsonPath('data.total', 148.0);
-});
-```
+Designed as a production-ready or extensible base for multi-tenant SaaS platforms.
 
----
-
-## 📊 Admin KPIs
-
-```php
-return [
-  'total_invoices' => Invoice::count(),
-  'total_revenue'  => Invoice::sum('total'),
-  'top_sellers'    => Invoice::select('seller_id', DB::raw('SUM(total) as revenue'))
-                         ->groupBy('seller_id')->orderByDesc('revenue')
-                         ->with('seller:id,name')->take(5)->get(),
-];
-```
-
----
-
-## 🧾 README (Essentials)
-
-* **Guards**: `seller` (session), `admin` (session), optional Sanctum
-* **Login**: `/seller/login` & `/admin/login`
-* **Seeders**: 1 Admin, 3 Sellers, 15 Clients, 40 Invoices
-* **Features**: CRUD Clients/Invoices, PDF, Events, Stats, REST API
-* **Run**: `php artisan migrate:fresh --seed`
-* **Tests**: `php artisan test`
-
----
-
-## ✅ Deliverables Checklist
-
-* [x] Separate guards & providers (Admin/Seller)
-* [x] Seller‑scoped data model (FK → sellers.id)
-* [x] FormRequests + Services/Repositories
-* [x] Event + Listener (logging/notification)
-* [x] DomPDF export
-* [x] Seeders/Factories (admin + sellers + data)
-* [x] Unit test (invoice creation)
-* [x] Clean routes & minimal Blade
