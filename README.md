@@ -1,6 +1,6 @@
-# 🧾 Multi-Guard Invoicing Dashboard (Laravel 11+)
+# 🧾 Multi-Guard Invoicing Dashboard (Laravel 12+)
 
-A **robust business dashboard** built with Laravel 11+ supporting **multi-guard authentication** for Admins and Sellers. Features RESTful APIs, PDF exports, service-layered architecture, and role-based access control. Ideal as a starter template for a full-scale SaaS invoicing platform.
+A **robust business dashboard** built with Laravel 12+ supporting **multi-guard authentication** for Admins and Sellers. Features RESTful APIs, PDF exports, service-layered architecture, and role-based access control. Ideal as a starter template for a full-scale SaaS invoicing platform.
 
 ---
 
@@ -50,7 +50,7 @@ Built with scalability and maintainability in mind, the project includes:
 
 | Component       | Tool / Version               |
 |----------------|------------------------------|
-| Framework       | Laravel 11.x                 |
+| Framework       | Laravel 12.x                 |
 | Language        | PHP 8.2+                     |
 | Database        | MySQL 8+                     |
 | Auth            | Multi-guard (Admin & Seller) |
