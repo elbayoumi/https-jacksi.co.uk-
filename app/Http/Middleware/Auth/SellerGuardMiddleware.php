@@ -7,6 +7,7 @@ namespace App\Http\Middleware\Auth;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route; // 👈 use Route facade
 use Symfony\Component\HttpFoundation\Response;
 
 class SellerGuardMiddleware
@@ -27,7 +28,8 @@ class SellerGuardMiddleware
             ], 401);
         }
 
-        $loginUrl = route_exists('seller.login')
+        // ✅ Use Route::has() instead of a custom helper
+        $loginUrl = Route::has('seller.login')
             ? route('seller.login')
             : url('/seller/login');
 
